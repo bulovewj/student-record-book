@@ -113,7 +113,14 @@ table.rec{width:100%;border-collapse:collapse}
   <!-- 명렬표 관리 -->
   <section id="v-roster" class="hide">
     <div class="roster">
-      <h3 style="margin-top:0">명렬표 입력</h3>
+      <h3 style="margin-top:0">한 명씩 추가</h3>
+      <div class="bar">
+        <input id="oneNo" type="number" min="1" placeholder="번호" style="width:80px">
+        <input id="oneName" placeholder="이름" style="width:160px">
+        <button id="bAddOne" class="pri">학생 추가</button>
+        <span class="help">이름에서 Enter를 누르면 추가되고 번호가 자동으로 1 올라갑니다.</span>
+      </div>
+      <h3>명렬표 한꺼번에 입력</h3>
       <p class="help">한 줄에 한 명씩 <b>번호 이름</b> 형식으로 입력하세요 (예: <code>1 김민준</code>). 엑셀에서 번호·이름 두 열을 복사해 붙여넣어도 됩니다.<br>기존 학생의 기록은 번호+이름이 같으면 그대로 유지됩니다.</p>
       <textarea id="rosterText"></textarea>
       <div class="bar" style="margin-top:10px">
@@ -180,7 +187,7 @@ function render(){
   ['grid','stu','roster'].forEach(v=>$('#v-'+v).classList.toggle('hide',v!==view));
   if(view==='grid')renderGrid();
   if(view==='stu')renderStu();
-  if(view==='roster')$('#rosterText').value=sorted().map(s=>`${s.no} ${s.name}`).join('\n');
+  if(view==='roster'){$('#rosterText').value=sorted().map(s=>`${s.no} ${s.name}`).join('\n');$('#oneNo').value=nextNo()}
 }
 
 function renderGrid(){
@@ -277,6 +284,20 @@ $('#bSaveRoster').onclick=()=>{
   S.students=S.students.filter(s=>keep.includes(s.id));gone.forEach(s=>delete S.records[s.id]);
   save();toast(`${S.students.length}명 저장`);view='grid';render();
 };
+function nextNo(){return S.students.reduce((m,s)=>Math.max(m,+s.no||0),0)+1}
+function addOne(){
+  const no=$('#oneNo').value.trim(),name=$('#oneName').value.trim();
+  if(!no||!name){toast('번호와 이름을 입력하세요');(no?$('#oneName'):$('#oneNo')).focus();return}
+  const dup=S.students.find(s=>String(s.no)===no&&s.name!==name);
+  if(dup&&!confirm(`${no}번에 이미 ${dup.name} 학생이 있습니다. 그래도 추가할까요?`))return;
+  const had=S.students.length;upsertStudent(no,name);save();
+  $('#rosterText').value=sorted().map(s=>`${s.no} ${s.name}`).join('\n');
+  toast(S.students.length>had?`${no}번 ${name} 추가`:`${name} 학생은 이미 있습니다`);
+  $('#oneNo').value=nextNo();$('#oneName').value='';$('#oneName').focus();
+}
+$('#bAddOne').onclick=addOne;
+$('#oneName').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();addOne()}});
+$('#oneNo').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#oneName').focus()}});
 $('#bReset').onclick=()=>{if(confirm('모든 학생과 기록을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')){S={students:[],records:{}};extraDates.clear();save();render()}};
 $('#bDemo').onclick=()=>{
   const names=['김민준','이서연','박도윤','최하은','정시우','강지아','조예준','윤수아','임지호','한서윤','오건우','서지유',
