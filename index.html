@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학생 기록부</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--sub:#667085;--line:#e3e6eb;--acc:#2f6fed;--accbg:#eaf1ff;--hl:#fff8d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0 12px 0 0}
+.tabs{display:flex;gap:4px}
+.tab{border:0;background:none;padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--sub)}
+.tab.on{background:var(--accbg);color:var(--acc);font-weight:600}
+.sp{flex:1}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);padding:6px 11px;border-radius:8px;cursor:pointer;color:var(--ink)}
+button:hover,.btn:hover{border-color:#c5cad3}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.del{color:#c0392b}
+input,textarea,select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:#fff;color:var(--ink)}
+main{padding:16px}
+.hide{display:none!important}
+.empty{padding:40px;text-align:center;color:var(--sub);background:var(--card);border:1px dashed var(--line);border-radius:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+/* grid */
+.gridwrap{overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;max-height:calc(100vh - 170px)}
+table.grid{border-collapse:separate;border-spacing:0;min-width:100%}
+.grid th,.grid td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;vertical-align:top}
+.grid thead th{position:sticky;top:0;background:#f0f2f5;z-index:2;padding:7px 8px;font-weight:600;white-space:nowrap}
+.grid .c0,.grid .c1{position:sticky;background:#fff;z-index:1;padding:7px 8px;white-space:nowrap}
+.grid thead .c0,.grid thead .c1{z-index:3;background:#f0f2f5}
+.grid .c0{left:0;width:48px;text-align:center;color:var(--sub)}
+.grid .c1{left:48px;min-width:80px;font-weight:600;cursor:pointer}
+.grid .c1:hover{color:var(--acc);text-decoration:underline}
+.grid td.cell{min-width:150px;max-width:240px}
+.grid td.cell div{min-height:36px;padding:7px 8px;outline:none;white-space:pre-wrap}
+.grid td.cell div:focus{background:var(--hl);box-shadow:inset 0 0 0 2px var(--acc)}
+.grid th .x{border:0;background:none;color:var(--sub);padding:0 0 0 4px;cursor:pointer}
+/* student */
+.stu{display:grid;grid-template-columns:220px 1fr;gap:16px}
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;max-height:calc(100vh - 120px);overflow:auto}
+.list input{margin:8px;width:calc(100% - 16px)}
+.li{display:flex;justify-content:space-between;padding:8px 12px;cursor:pointer;border-top:1px solid var(--line)}
+.li:hover{background:#f7f8fa}.li.on{background:var(--accbg);color:var(--acc);font-weight:600}
+.li small{color:var(--sub);font-weight:400}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+.sheet h2{margin:0 0 4px;font-size:22px}
+.meta{color:var(--sub);margin-bottom:16px}
+.add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:#f7f8fa;border-radius:10px}
+.add textarea{flex:1;min-width:220px;min-height:40px;resize:vertical}
+table.rec{width:100%;border-collapse:collapse}
+.rec th,.rec td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.rec th{background:#f0f2f5}
+.rec td.d{width:120px;white-space:nowrap}
+.rec td.a{width:110px;white-space:nowrap}
+.rec td.t{white-space:pre-wrap}
+/* roster editor */
+.roster{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;max-width:720px}
+.roster textarea{width:100%;min-height:220px}
+.help{color:var(--sub);font-size:13px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2330;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;z-index:50}
+.toast.on{opacity:1}
+#printArea{display:none}
+@media (max-width:720px){.stu{grid-template-columns:1fr}.list{max-height:220px}}
+@media print{
+  header,main{display:none!important}
+  #printArea{display:block}
+  .pg{page-break-after:always;padding:8mm 4mm}
+  .pg:last-child{page-break-after:auto}
+  .pg h2{margin:0 0 4px}
+  .pg table{width:100%;border-collapse:collapse;font-size:12px}
+  .pg th,.pg td{border:1px solid #999;padding:6px;text-align:left;vertical-align:top}
+  .pg td{white-space:pre-wrap}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📒 학생 기록부</h1>
+  <div class="tabs">
+    <button class="tab on" data-v="grid">전체 명렬표</button>
+    <button class="tab" data-v="stu">학생별 (1인 1장)</button>
+    <button class="tab" data-v="roster">명렬표 관리</button>
+  </div>
+  <span class="sp"></span>
+  <label class="btn">엑셀 불러오기<input id="fImport" type="file" accept=".xlsx,.xls,.csv" hidden></label>
+  <button id="bExport" class="pri">엑셀 내보내기</button>
+  <button id="bBackup">백업(.json)</button>
+  <label class="btn">복원<input id="fRestore" type="file" accept=".json" hidden></label>
+</header>
+
+<main>
+  <!-- 전체 명렬표 -->
+  <section id="v-grid">
+    <div class="bar">
+      <input id="newDate" type="date">
+      <button id="bAddDate" class="pri">+ 날짜 열 추가</button>
+      <span class="help">칸을 클릭해 바로 입력하세요. 입력한 내용은 학생별 기록에 자동 반영됩니다. (이름 클릭 → 그 학생 장으로 이동)</span>
+    </div>
+    <div id="gridBox"></div>
+  </section>
+
+  <!-- 학생별 -->
+  <section id="v-stu" class="hide">
+    <div class="stu">
+      <div class="list"><input id="q" placeholder="이름 검색"><div id="stuList"></div></div>
+      <div id="stuSheet"></div>
+    </div>
+  </section>
+
+  <!-- 명렬표 관리 -->
+  <section id="v-roster" class="hide">
+    <div class="roster">
+      <h3 style="margin-top:0">명렬표 입력</h3>
+      <p class="help">한 줄에 한 명씩 <b>번호 이름</b> 형식으로 입력하세요 (예: <code>1 김민준</code>). 엑셀에서 번호·이름 두 열을 복사해 붙여넣어도 됩니다.<br>기존 학생의 기록은 번호+이름이 같으면 그대로 유지됩니다.</p>
+      <textarea id="rosterText"></textarea>
+      <div class="bar" style="margin-top:10px">
+        <button id="bSaveRoster" class="pri">명렬표 저장</button>
+        <button id="bDemo">예시 데이터 넣기</button>
+        <span class="sp"></span>
+        <button id="bReset" class="del">전체 초기화</button>
+      </div>
+      <h4>엑셀 불러오기 형식</h4>
+      <p class="help">① <b>명렬표형</b>: 첫 행에 <code>번호 | 이름 | 3/4 | 3/11 | …</code> — 날짜 열마다 그날 기록<br>
+      ② <b>목록형</b>: 첫 행에 <code>날짜 | 번호 | 이름 | 내용</code> — 한 줄에 기록 하나<br>
+      둘 다 자동 인식합니다. 없는 학생은 명렬표에 추가되고, 같은 학생·같은 날짜 기록은 합쳐집니다.</p>
+    </div>
+  </section>
+</main>
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='student-records-v1';
+let S={students:[],records:{}}; // records: { sid: { 'YYYY-MM-DD': '내용' } }
+let view='grid', cur=null, extraDates=new Set();
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fmt=d=>{const[y,m,dd]=d.split('-');return `${+m}/${+dd}`};
+const fmtLong=d=>{const t=new Date(d+'T00:00');return `${d.replace(/-/g,'.')} (${'일월화수목금토'[t.getDay()]})`};
+
+function load(){try{const r=localStorage.getItem(KEY);if(r)S=JSON.parse(r)}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('⚠ 저장 실패 — 백업을 받아두세요')}}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800)}
+
+function sorted(){return [...S.students].sort((a,b)=>(+a.no||1e9)-(+b.no||1e9)||a.name.localeCompare(b.name))}
+function allDates(){const s=new Set(extraDates);for(const r of Object.values(S.records))for(const d in r)s.add(d);return [...s].sort()}
+function setRec(sid,date,text){
+  text=(text||'').trim();
+  S.records[sid]=S.records[sid]||{};
+  if(text)S.records[sid][date]=text;else delete S.records[sid][date];
+  save();
+}
+function appendRec(sid,date,text){
+  const old=S.records[sid]?.[date];
+  setRec(sid,date,old?old+'\n'+text:text);
+}
+
+/* ---------- 날짜 파싱 ---------- */
+function normDate(v){
+  if(v==null||v==='')return null;
+  if(v instanceof Date&&!isNaN(v)){return v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0')}
+  if(typeof v==='number'&&v>20000&&v<80000){const d=XLSX.SSF.parse_date_code(v);return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0')}
+  const s=String(v).trim();let m;
+  const Y=new Date().getFullYear();
+  if(m=s.match(/^(\d{4})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/))return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  if(m=s.match(/^(\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})$/))return `20${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  if(m=s.match(/^(\d{1,2})\s*[./월\-]\s*(\d{1,2})\s*일?(\s*\(.\))?$/))return `${Y}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  return null;
+}
+
+/* ---------- 렌더 ---------- */
+function render(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===view));
+  ['grid','stu','roster'].forEach(v=>$('#v-'+v).classList.toggle('hide',v!==view));
+  if(view==='grid')renderGrid();
+  if(view==='stu')renderStu();
+  if(view==='roster')$('#rosterText').value=sorted().map(s=>`${s.no} ${s.name}`).join('\n');
+}
+
+function renderGrid(){
+  const st=sorted(),ds=allDates();
+  if(!st.length){$('#gridBox').innerHTML='<div class="empty">아직 학생이 없습니다. <b>명렬표 관리</b>에서 입력하거나 <b>엑셀 불러오기</b>를 하세요.</div>';return}
+  let h='<div class="gridwrap"><table class="grid"><thead><tr><th class="c0">번호</th><th class="c1">이름</th>';
+  for(const d of ds)h+=`<th title="${fmtLong(d)}">${fmt(d)}<button class="x" data-deldate="${d}" title="이 날짜 열 삭제">×</button></th>`;
+  h+='</tr></thead><tbody>';
+  for(const s of st){
+    h+=`<tr><td class="c0">${esc(s.no)}</td><td class="c1" data-go="${s.id}">${esc(s.name)}</td>`;
+    for(const d of ds)h+=`<td class="cell"><div contenteditable="plaintext-only" data-sid="${s.id}" data-d="${d}">${esc(S.records[s.id]?.[d]||'')}</div></td>`;
+    h+='</tr>';
+  }
+  h+='</tbody></table></div>';
+  if(!ds.length)h+='<p class="help" style="margin-top:10px">위에서 날짜를 골라 <b>+ 날짜 열 추가</b>를 누르면 기록 칸이 생깁니다.</p>';
+  $('#gridBox').innerHTML=h;
+}
+
+function renderStu(){
+  const st=sorted(),q=$('#q').value.trim();
+  if(!cur||!S.students.find(s=>s.id===cur))cur=st[0]?.id||null;
+  $('#stuList').innerHTML=st.filter(s=>!q||s.name.includes(q)).map(s=>{
+    const n=Object.keys(S.records[s.id]||{}).length;
+    return `<div class="li ${s.id===cur?'on':''}" data-pick="${s.id}"><span>${esc(s.no)}. ${esc(s.name)}</span><small>${n}건</small></div>`}).join('')||'<div class="li">학생 없음</div>';
+  const s=S.students.find(x=>x.id===cur);
+  if(!s){$('#stuSheet').innerHTML='<div class="empty">학생을 먼저 등록하세요.</div>';return}
+  const recs=Object.entries(S.records[s.id]||{}).sort((a,b)=>a[0]<b[0]?1:-1);
+  $('#stuSheet').innerHTML=`<div class="sheet">
+    <div class="bar" style="justify-content:space-between"><div><h2>${esc(s.no)}번 ${esc(s.name)}</h2><div class="meta">기록 ${recs.length}건</div></div>
+    <div><button data-print="one">이 학생 인쇄</button> <button data-print="all">전체 1인1장 인쇄</button></div></div>
+    <div class="add"><input id="aDate" type="date" value="${today()}"><textarea id="aText" placeholder="기록 내용 (Ctrl/⌘+Enter로 추가)"></textarea><button id="bAdd" class="pri">기록 추가</button></div>
+    ${recs.length?`<table class="rec"><thead><tr><th>날짜</th><th>내용</th><th></th></tr></thead><tbody>
+    ${recs.map(([d,t])=>`<tr><td class="d">${fmtLong(d)}</td><td class="t" contenteditable="plaintext-only" data-sid="${s.id}" data-d="${d}">${esc(t)}</td><td class="a"><button class="del" data-delrec="${d}">삭제</button></td></tr>`).join('')}
+    </tbody></table>`:'<div class="empty">아직 기록이 없습니다.</div>'}
+  </div>`;
+}
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target;
+  if(t.matches('.tab')){view=t.dataset.v;render()}
+  else if(t.dataset.go){cur=t.dataset.go;view='stu';render()}
+  else if(t.dataset.pick){cur=t.dataset.pick;renderStu()}
+  else if(t.dataset.deldate){
+    const d=t.dataset.deldate,n=S.students.filter(s=>S.records[s.id]?.[d]).length;
+    if(n&&!confirm(`${fmtLong(d)} 기록 ${n}건이 모두 삭제됩니다. 계속할까요?`))return;
+    for(const s of S.students)if(S.records[s.id])delete S.records[s.id][d];
+    extraDates.delete(d);save();renderGrid();
+  }
+  else if(t.dataset.delrec){if(confirm('이 기록을 삭제할까요?')){setRec(cur,t.dataset.delrec,'');renderStu()}}
+  else if(t.id==='bAdd')addFromSheet();
+  else if(t.dataset.print)doPrint(t.dataset.print);
+});
+// 셀 편집(양쪽 공통): 포커스 아웃 시 저장
+document.addEventListener('focusout',e=>{
+  const t=e.target;if(!t.dataset||!t.dataset.sid||!t.dataset.d)return;
+  const before=S.records[t.dataset.sid]?.[t.dataset.d]||'',after=t.innerText.trim();
+  if(before!==after){setRec(t.dataset.sid,t.dataset.d,after);toast('저장됨 · 양쪽 반영')}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='aText'&&e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();addFromSheet()}
+  // 명렬표 칸: Enter=아래 칸, Shift+Enter=줄바꿈
+  if(e.target.closest&&e.target.closest('td.cell')&&e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+    e.preventDefault();const td=e.target.closest('td'),tr=td.parentElement.nextElementSibling;
+    if(tr)tr.children[td.cellIndex].firstChild.focus();else e.target.blur();
+  }
+});
+$('#q').addEventListener('input',renderStu);
+
+function addFromSheet(){
+  const d=$('#aDate').value,t=$('#aText').value.trim();
+  if(!d||!t){toast('날짜와 내용을 입력하세요');return}
+  appendRec(cur,d,t);renderStu();toast('추가됨 · 전체 명렬표에도 반영');
+}
+$('#newDate').value=today();
+$('#bAddDate').onclick=()=>{const d=$('#newDate').value;if(!d)return;extraDates.add(d);renderGrid();
+  const c=document.querySelector(`[data-d="${d}"]`);if(c){c.scrollIntoView({inline:'center',block:'nearest'});c.focus()}};
+
+/* ---------- 명렬표 ---------- */
+function upsertStudent(no,name){
+  name=String(name||'').trim();no=String(no??'').trim();if(!name)return null;
+  let s=S.students.find(x=>x.name===name&&String(x.no)===no)||S.students.find(x=>x.name===name&&(!no||!x.no));
+  if(!s){s={id:uid(),no,name};S.students.push(s)}else if(no)s.no=no;
+  return s;
+}
+$('#bSaveRoster').onclick=()=>{
+  const lines=$('#rosterText').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  const keep=[];
+  lines.forEach((l,i)=>{let m=l.match(/^(\d+)[\s.,\t]+(.+)$/);const no=m?m[1]:String(i+1),name=(m?m[2]:l).trim();
+    const s=upsertStudent(no,name);if(s)keep.push(s.id)});
+  const gone=S.students.filter(s=>!keep.includes(s.id));
+  const lost=gone.filter(s=>Object.keys(S.records[s.id]||{}).length);
+  if(lost.length&&!confirm(`명렬표에서 빠진 ${lost.map(s=>s.name).join(', ')} 학생의 기록이 삭제됩니다. 계속할까요?`))return;
+  S.students=S.students.filter(s=>keep.includes(s.id));gone.forEach(s=>delete S.records[s.id]);
+  save();toast(`${S.students.length}명 저장`);view='grid';render();
+};
+$('#bReset').onclick=()=>{if(confirm('모든 학생과 기록을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')){S={students:[],records:{}};extraDates.clear();save();render()}};
+$('#bDemo').onclick=()=>{
+  const names=['김민준','이서연','박도윤','최하은','정시우','강지아','조예준','윤수아','임지호','한서윤','오건우','서지유',
+    '신유준','권하린','황은우','안채원','송현우','류다은','전시윤','홍예린','고준서','문소율','양태윤','배나연'];
+  names.forEach((n,i)=>upsertStudent(i+1,n));
+  const st=sorted();
+  const dates=['2026-10-20','2026-10-27','2026-11-03','2026-11-05','2026-11-10','2026-11-12'];
+  const notes=['수업 중 발표 적극적','모둠활동 리더 역할 잘 수행','과제 미제출 → 다음 시간까지 제출 약속','결석(병결)','지각 1회',
+    '친구 갈등 상담 — 화해함','수행평가 우수','수업 중 졸음, 컨디션 확인 필요','학급 청소 자발적으로 도움','질문을 자주 함, 탐구심 높음',
+    '준비물 미지참','교우관계 원만','독서록 우수 작성','보건실 이용(두통)','학부모 상담 실시','봉사활동 참여','수업 태도 개선됨','조퇴(가정사유)'];
+  let seed=7;const rnd=n=>(seed=(seed*9301+49297)%233280)%n;
+  st.forEach(s=>dates.forEach(d=>{if(rnd(10)<4)setRec(s.id,d,notes[rnd(notes.length)])}));
+  save();view='grid';render();toast('예시 데이터 24명 추가');
+};
+
+/* ---------- 엑셀 불러오기 ---------- */
+$('#fImport').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
+    const sn=wb.SheetNames.find(n=>/전체|명렬/.test(n))||wb.SheetNames[0];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
+    toast(importRows(rows));view='grid';render();
+  }catch(err){console.error(err);alert('파일을 읽지 못했습니다: '+err.message)}
+};
+function importRows(rows){
+  // 헤더 행 찾기: '이름'이 있는 첫 행
+  let hi=rows.findIndex(r=>r.some(c=>String(c).trim()==='이름'||String(c).trim()==='성명'));
+  if(hi<0)throw new Error("'이름' 열이 있는 머리글 행을 찾지 못했습니다");
+  const H=rows[hi].map(c=>c instanceof Date?c:String(c).trim());
+  const iName=H.findIndex(c=>c==='이름'||c==='성명');
+  const iNo=H.findIndex(c=>c==='번호'||c==='번');
+  const iDate=H.findIndex(c=>c==='날짜'||c==='일자');
+  const iText=H.findIndex(c=>['내용','기록','메모','관찰내용','특기사항'].includes(c));
+  let nRec=0,nStu=S.students.length;
+  const body=rows.slice(hi+1).filter(r=>String(r[iName]??'').trim());
+  if(iDate>=0&&iText>=0){ // 목록형
+    for(const r of body){const d=normDate(r[iDate]),t=String(r[iText]??'').trim();
+      const s=upsertStudent(iNo>=0?r[iNo]:'',r[iName]);if(s&&d&&t){mergeRec(s.id,d,t);nRec++}}
+  }else{ // 명렬표형: 날짜 머리글 열
+    const dcols=H.map((c,i)=>[i,normDate(c)]).filter(([i,d])=>d&&i!==iName&&i!==iNo);
+    if(!dcols.length&&iNo<0&&body.length===0)throw new Error('날짜 열을 찾지 못했습니다');
+    body.forEach((r,k)=>{const s=upsertStudent(iNo>=0?r[iNo]:k+1,r[iName]);if(!s)return;
+      for(const[i,d]of dcols){const t=String(r[i]??'').trim();if(t){mergeRec(s.id,d,t);nRec++}else extraDates.add(d)}});
+  }
+  save();return `불러오기 완료 · 학생 ${S.students.length-nStu}명 추가 · 기록 ${nRec}건`;
+}
+function mergeRec(sid,d,t){const old=S.records[sid]?.[d];if(old&&old.split('\n').includes(t))return;appendRec(sid,d,t)}
+
+/* ---------- 엑셀 내보내기 (전체 + 1인1장 시트) ---------- */
+$('#bExport').onclick=()=>{
+  const st=sorted(),ds=allDates();if(!st.length){toast('학생이 없습니다');return}
+  const wb=XLSX.utils.book_new();
+  const grid=[['번호','이름',...ds.map(fmtLong)],...st.map(s=>[s.no,s.name,...ds.map(d=>S.records[s.id]?.[d]||'')])];
+  const ws=XLSX.utils.aoa_to_sheet(grid);ws['!cols']=[{wch:6},{wch:10},...ds.map(()=>({wch:24}))];
+  XLSX.utils.book_append_sheet(wb,ws,'전체명렬표');
+  const used=new Set(['전체명렬표']);
+  for(const s of st){
+    const recs=Object.entries(S.records[s.id]||{}).sort((a,b)=>a[0]<b[0]?-1:1);
+    const a=[[`${s.no}번 ${s.name}`],[],['날짜','내용'],...recs.map(([d,t])=>[fmtLong(d),t])];
+    const w=XLSX.utils.aoa_to_sheet(a);w['!cols']=[{wch:16},{wch:70}];
+    let n=`${s.no}_${s.name}`.replace(/[\\\/?*\[\]:]/g,'').slice(0,31),k=2;
+    while(used.has(n))n=(`${s.no}_${s.name}`.slice(0,28)+'_'+k++);used.add(n);
+    XLSX.utils.book_append_sheet(wb,w,n);
+  }
+  XLSX.writeFile(wb,`학생기록부_${today()}.xlsx`);toast('엑셀 저장 (전체 + 학생별 시트)');
+};
+
+/* ---------- 백업/복원 ---------- */
+$('#bBackup').onclick=()=>{const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`학생기록부_백업_${today()}.json`;a.click()};
+$('#fRestore').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.students))throw 0;
+    if(confirm('현재 데이터를 백업 파일 내용으로 바꿉니다. 계속할까요?')){S=d;save();render();toast('복원 완료')}}
+  catch{alert('올바른 백업 파일이 아닙니다')}};
+
+/* ---------- 인쇄 (1인 1장) ---------- */
+function doPrint(mode){
+  const list=mode==='one'?S.students.filter(s=>s.id===cur):sorted();
+  $('#printArea').innerHTML=list.map(s=>{
+    const recs=Object.entries(S.records[s.id]||{}).sort((a,b)=>a[0]<b[0]?-1:1);
+    return `<div class="pg"><h2>${esc(s.no)}번 ${esc(s.name)}</h2><p>기록 ${recs.length}건 · 출력일 ${today()}</p>
+    <table><thead><tr><th style="width:120px">날짜</th><th>내용</th></tr></thead><tbody>
+    ${recs.map(([d,t])=>`<tr><td>${fmtLong(d)}</td><td>${esc(t)}</td></tr>`).join('')||'<tr><td colspan="2">기록 없음</td></tr>'}
+    </tbody></table></div>`}).join('');
+  window.print();
+}
+
+load();render();
+</script>
+</body>
+</html>
