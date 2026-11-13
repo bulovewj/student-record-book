@@ -63,6 +63,19 @@ table.rec{width:100%;border-collapse:collapse}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1d2330;color:#fff;padding:9px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;z-index:50}
 .toast.on{opacity:1}
 #printArea{display:none}
+dialog#help{border:0;border-radius:16px;padding:0;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 48px);box-shadow:0 20px 60px rgba(0,0,0,.25);color:var(--ink)}
+dialog#help::backdrop{background:rgba(20,24,33,.45)}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.hd h2{margin:0;font-size:18px}
+.hb{padding:4px 20px 20px}
+.hb h3{font-size:15px;margin:18px 0 6px}
+.hb ol{margin:6px 0;padding-left:20px}.hb li{margin:3px 0}
+.ex{border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
+.ex th,.ex td{border:1px solid var(--line);padding:4px 8px}
+.ex th{background:#eef5ee}
+.note{background:#fff8e6;border:1px solid #f3e1b0;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:14px}
+.hf{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:#fff}
+@media (max-width:720px){header h1{width:100%}}
 @media (max-width:720px){.stu{grid-template-columns:1fr}.list{max-height:220px}}
 @media print{
   header,main{display:none!important}
@@ -85,6 +98,8 @@ table.rec{width:100%;border-collapse:collapse}
     <button class="tab" data-v="roster">명렬표 관리</button>
   </div>
   <span class="sp"></span>
+  <button id="bHelp">❓ 사용 방법</button>
+  <button id="bTemplate">엑셀 양식 받기</button>
   <label class="btn">엑셀 불러오기<input id="fImport" type="file" accept=".xlsx,.xls,.csv" hidden></label>
   <button id="bExport" class="pri">엑셀 내보내기</button>
   <button id="bBackup">백업(.json)</button>
@@ -136,6 +151,51 @@ table.rec{width:100%;border-collapse:collapse}
     </div>
   </section>
 </main>
+
+<dialog id="help">
+  <div class="hd"><h2>📒 학생 기록부 사용 방법</h2><button data-closehelp aria-label="닫기">✕</button></div>
+  <div class="hb">
+    <p>전체 명렬표와 학생별(1인 1장) 기록이 <b>하나의 데이터</b>로 연결되어 있어, 어느 쪽에 적어도 양쪽에 바로 반영됩니다.</p>
+
+    <h3>1. 학생 등록 (셋 중 편한 방법)</h3>
+    <ol>
+      <li><b>명렬표 관리</b> 탭 → <b>한 명씩 추가</b>: 번호·이름 입력 후 Enter</li>
+      <li><b>명렬표 관리</b> 탭 → <b>한꺼번에 입력</b>: <code>1 김민준</code>처럼 한 줄에 한 명씩 붙여넣기</li>
+      <li><b>엑셀 양식 받기</b> → 작성 → <b>엑셀 불러오기</b> (아래 참고)</li>
+    </ol>
+
+    <h3>2. 기록하기</h3>
+    <ol>
+      <li><b>전체 명렬표</b>: 날짜를 골라 <b>+ 날짜 열 추가</b> → 칸 클릭 후 입력 (Enter: 아래 학생, Shift+Enter: 줄바꿈)</li>
+      <li><b>학생별 (1인 1장)</b>: 학생 선택 → 날짜·내용 입력 → <b>기록 추가</b></li>
+    </ol>
+
+    <h3>3. 엑셀로 넣기</h3>
+    <p style="margin:4px 0"><b>엑셀 양식 받기</b>를 누르면 아래 두 시트가 든 파일이 내려받아집니다. 편한 시트 하나만 채워서 <b>엑셀 불러오기</b>로 올리세요. (첫 행 머리글 이름은 바꾸지 마세요)</p>
+    <p style="margin:10px 0 2px"><b>① 명렬표형</b> — 학생이 행, 날짜가 열</p>
+    <table class="ex"><tr><th>번호</th><th>이름</th><th>2026-03-03</th><th>2026-03-10</th><th>…</th></tr>
+      <tr><td>1</td><td>김민준</td><td>발표 적극적</td><td></td><td></td></tr>
+      <tr><td>2</td><td>이서연</td><td></td><td>결석(병결)</td><td></td></tr></table>
+    <p style="margin:10px 0 2px"><b>② 목록형</b> — 한 줄에 기록 하나</p>
+    <table class="ex"><tr><th>날짜</th><th>번호</th><th>이름</th><th>내용</th></tr>
+      <tr><td>2026-03-03</td><td>1</td><td>김민준</td><td>발표 적극적</td></tr>
+      <tr><td>2026-03-10</td><td>2</td><td>이서연</td><td>결석(병결)</td></tr></table>
+    <ul style="padding-left:20px;margin:8px 0">
+      <li>날짜는 <code>2026-03-03</code>, <code>2026.3.3</code>, <code>3/3</code>, <code>3월 3일</code>, 엑셀 날짜 서식 모두 인식합니다. (연도가 없으면 올해)</li>
+      <li>명렬표에 없는 학생은 자동 추가되고, 같은 학생·같은 날짜 기록은 한 칸에 합쳐집니다.</li>
+      <li><b>엑셀 내보내기</b>로 받은 파일도 그대로 다시 불러올 수 있습니다.</li>
+    </ul>
+
+    <h3>4. 내보내기 · 인쇄</h3>
+    <ol>
+      <li><b>엑셀 내보내기</b>: 전체명렬표 시트 + 학생별 시트(1인 1장)가 든 파일</li>
+      <li><b>학생별</b> 탭 → <b>이 학생 인쇄 / 전체 1인1장 인쇄</b></li>
+    </ol>
+
+    <div class="note">⚠ 기록은 서버로 전송되지 않고 <b>지금 이 브라우저에만</b> 저장됩니다. 다른 컴퓨터에서는 보이지 않고, 브라우저 기록을 지우면 사라질 수 있으니 <b>백업(.json)</b> 또는 <b>엑셀 내보내기</b>로 자주 저장해 두세요.</div>
+  </div>
+  <div class="hf"><button id="bTemplate2">엑셀 양식 받기</button><button class="pri" data-closehelp>시작하기</button></div>
+</dialog>
 <div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
@@ -318,9 +378,17 @@ $('#fImport').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
     const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
-    const sn=wb.SheetNames.find(n=>/전체|명렬/.test(n))||wb.SheetNames[0];
-    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
-    toast(importRows(rows));view='grid';render();
+    // '이름' 머리글이 있는 시트를 모두 읽음 (작성방법 시트, 내보낸 파일의 학생별 시트는 자동으로 건너뜀)
+    const st0=S.students.length,rc=()=>Object.values(S.records).reduce((a,r)=>a+Object.keys(r).length,0),rc0=rc();
+    let used=0;
+    for(const sn of wb.SheetNames){
+      if(/작성방법|안내|사용법/.test(sn))continue;
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''});
+      if(!rows.some(r=>r.some(c=>['이름','성명'].includes(String(c).trim()))))continue;
+      importRows(rows);used++;
+    }
+    if(!used)throw new Error("'이름' 열이 있는 시트를 찾지 못했습니다. [엑셀 양식 받기]로 받은 양식을 사용해 보세요.");
+    toast(`불러오기 완료 · 학생 ${S.students.length-st0}명 추가 · 기록 ${rc()-rc0}건 추가`);view='grid';render();
   }catch(err){console.error(err);alert('파일을 읽지 못했습니다: '+err.message)}
 };
 function importRows(rows){
@@ -346,6 +414,44 @@ function importRows(rows){
   save();return `불러오기 완료 · 학생 ${S.students.length-nStu}명 추가 · 기록 ${nRec}건`;
 }
 function mergeRec(sid,d,t){const old=S.records[sid]?.[d];if(old&&old.split('\n').includes(t))return;appendRec(sid,d,t)}
+
+/* ---------- 엑셀 양식 다운로드 ---------- */
+function downloadTemplate(){
+  const wb=XLSX.utils.book_new();
+  // 현재 학생이 있으면 명단을 미리 채워 줌
+  const st=sorted(),n=Math.max(st.length,30);
+  const d0=new Date();d0.setDate(d0.getDate()-((d0.getDay()+6)%7)); // 이번 주 월요일
+  const ds=[0,7,14,21].map(k=>{const d=new Date(d0);d.setDate(d.getDate()+k);return normDate(d)});
+  const g=[['번호','이름',...ds]];
+  for(let i=0;i<n;i++)g.push([st[i]?.no??i+1,st[i]?.name??'',...ds.map(()=>'')]);
+  const w1=XLSX.utils.aoa_to_sheet(g);w1['!cols']=[{wch:6},{wch:10},...ds.map(()=>({wch:22}))];
+  XLSX.utils.book_append_sheet(wb,w1,'명렬표형');
+  const w2=XLSX.utils.aoa_to_sheet([['날짜','번호','이름','내용']]);w2['!cols']=[{wch:12},{wch:6},{wch:10},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,w2,'목록형');
+  const guide=[['학생 기록부 엑셀 양식 작성 방법'],[],
+    ['■ 두 시트 중 편한 것 하나만 채워서 [엑셀 불러오기]로 올리세요. 둘 다 채워도 됩니다.'],
+    ['■ 첫 행(머리글)의 "번호", "이름", "날짜", "내용" 글자는 바꾸지 마세요.'],[],
+    ['① 명렬표형 시트 — 학생이 행, 날짜가 열'],
+    ['   · 이름 칸에 학생 이름을 적고, 날짜 열 아래 칸에 그날 기록을 적습니다.'],
+    ['   · 날짜 머리글은 고쳐도 되고, 열을 더 늘려도 됩니다. (예: 2026-03-03, 3/3, 3월 3일)'],
+    ['   · 이름이 빈 줄은 무시됩니다.'],[],
+    ['② 목록형 시트 — 한 줄에 기록 하나'],
+    ['   · 예) 2026-03-03 | 1 | 김민준 | 수업 중 발표 적극적'],[],
+    ['■ 명렬표에 없는 학생은 자동으로 추가되고, 같은 학생·같은 날짜 기록은 한 칸에 합쳐집니다.'],
+    ['■ 이 [작성방법] 시트는 불러올 때 무시됩니다.']];
+  const w3=XLSX.utils.aoa_to_sheet(guide);w3['!cols']=[{wch:90}];
+  XLSX.utils.book_append_sheet(wb,w3,'작성방법');
+  XLSX.writeFile(wb,'학생기록부_양식.xlsx');toast('양식을 내려받았습니다');
+}
+$('#bTemplate').onclick=downloadTemplate;
+$('#bTemplate2').onclick=downloadTemplate;
+
+/* ---------- 사용 방법 (최초 접속 시 자동 표시) ---------- */
+const help=$('#help'),HELP_KEY='student-records-help-seen';
+$('#bHelp').onclick=()=>help.showModal();
+help.addEventListener('click',e=>{if(e.target===help||e.target.closest('[data-closehelp]'))help.close()});
+help.addEventListener('close',()=>{try{localStorage.setItem(HELP_KEY,'1')}catch(e){}});
+try{if(!localStorage.getItem(HELP_KEY))help.showModal()}catch(e){help.showModal()}
 
 /* ---------- 엑셀 내보내기 (전체 + 1인1장 시트) ---------- */
 $('#bExport').onclick=()=>{
